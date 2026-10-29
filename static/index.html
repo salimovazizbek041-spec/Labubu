@@ -1,1 +1,175 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abe Vayn - Labubu Store</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <div class="hero-header">
+            <div class="branding">
+                <span class="insta-tag">@abe.vayn</span>
+                <h1>LABUBU WORLD</h1>
+            </div>
+            <div class="toy-animation-box">
+                <div class="floating-toy toy1">🧸</div>
+                <div class="floating-toy toy2">✨</div>
+                <div class="floating-toy toy3">🎁</div>
+                <div class="floating-toy toy4">🐰</div>
+            </div>
+        </div>
 
+        <div class="card product-card">
+            <div class="badge">Eksklyuziv</div>
+            <img src="labubu.png" alt="Labubu Toy" class="product-img">
+            <h2>Labubu Collection Toy[span_1](start_span)[span_1](end_span)</h2>
+            <p class="subtitle">Abe Vayn maxsus to'plamidan original o'yinchoq[span_2](start_span)[span_2](end_span)</p>
+            
+            <div class="price-box">
+                <span id="old-price" class="old-price">20,000 so'm</span>
+                <span id="current-price" class="current-price">20,000 so'm</span>
+            </div>
+        </div>
+
+        <div class="card form-card">
+            <h3>Buyurtma Rasmiylashtirish</h3>
+            
+            <div class="input-group">
+                <label>Promo-kod (10% Skidka)</label>
+                <div class="promo-field">
+                    <input type="text" id="promo-code" placeholder="Masalan: ABE10">
+                    <button type="button" onclick="applyPromo()">Qo'llash</button>
+                </div>
+                <small id="promo-msg"></small>
+            </div>
+
+            <div class="input-group">
+                <label>Viloyat va Tuman (BTS Dostavka)</label>
+                <select id="region-select">
+                    <option value="">Viloyatni tanlang</option>
+                    <option value="Toshkent sh.">Toshkent shahri</option>
+                    <option value="Toshkent vil.">Toshkent viloyati</option>
+                    <option value="Andijon">Andijon</option>
+                    <option value="Farg'ona">Farg'ona</option>
+                    <option value="Namangan">Namangan</option>
+                    <option value="Samarqand">Samarqand</option>
+                    <option value="Buxoro">Buxoro</option>
+                    <option value="Xorazm">Xorazm</option>
+                    <option value="Qashqadaryo">Qashqadaryo</option>
+                    <option value="Surxondaryo">Surxondaryo</option>
+                    <option value="Navoiy">Navoiy</option>
+                    <option value="Jizzax">Jizzax</option>
+                    <option value="Sirdaryo">Sirdaryo</option>
+                    <option value="Qoraqalpog'iston">Qoraqalpog'iston R.</option>
+                </select>
+                <input type="text" id="district-input" placeholder="Tuman va MFY nomi" style="margin-top: 8px;">
+            </div>
+
+            <div class="input-group">
+                <label>Telefon Raqamingiz</label>
+                <input type="tel" id="phone-input" placeholder="+998 90 123 45 67">
+            </div>
+
+            <div class="payment-box">
+                <h4>💳 To'lov Ma'lumotlari</h4>
+                <p class="card-number" id="card-display">8600 ---- ---- ----</p>
+                <p class="card-holder" id="holder-display">ABE VAYN</p>
+                <small>Ushbu kartaga o'tkazma qilib, chek rasmini pastga yuklang:</small>
+                
+                <div class="file-upload">
+                    <input type="file" id="check-file" accept="image/*">
+                </div>
+            </div>
+
+            <button class="btn-submit" id="submit-btn" onclick="sendOrder()">Buyurtma berish</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        let basePrice = 20000;
+        let finalPrice = 20000;
+        let appliedPromo = "";
+
+        fetch('/api/info')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('card-display').innerText = data.card_number;
+                document.getElementById('holder-display').innerText = data.card_holder;
+            });
+
+        async function applyPromo() {
+            const code = document.getElementById('promo-code').value.trim();
+            const msg = document.getElementById('promo-msg');
+            if(!code) return;
+
+            const res = await fetch(`/api/check-promo?code=${encodeURIComponent(code)}`);
+            const data = await res.json();
+
+            if(data.valid) {
+                const discount = (basePrice * data.discount_percent) / 100;
+                finalPrice = basePrice - discount;
+                document.getElementById('old-price').style.display = 'inline';
+                document.getElementById('current-price').innerText = finalPrice.toLocaleString() + " so'm";
+                msg.style.color = "#2ef071";
+                msg.innerText = `✅ Promo-kod qo'llandi: ${data.discount_percent}% skidka!`;
+                appliedPromo = code;
+            } else {
+                msg.style.color = "#ff4757";
+                msg.innerText = "❌ Noto'g'ri promo-kod!";
+            }
+        }
+
+        async function sendOrder() {
+            const region = document.getElementById('region-select').value;
+            const district = document.getElementById('district-input').value;
+            const phone = document.getElementById('phone-input').value;
+            const fileInput = document.getElementById('check-file');
+
+            if(!region || !district || !phone || !fileInput.files[0]) {
+                alert("Iltimos, barcha maydonlarni to'ldiring va chek rasmini yuklang!");
+                return;
+            }
+
+            const btn = document.getElementById('submit-btn');
+            btn.innerText = "Yuborilmoqda...";
+            btn.disabled = true;
+
+            const user = tg.initDataUnsafe?.user || { id: 123456, first_name: "Demo User" };
+
+            const formData = new FormData();
+            formData.append('user_id', user.id);
+            formData.append('user_name', user.first_name + (user.last_name ? ' ' + user.last_name : ''));
+            formData.append('phone', phone);
+            formData.append('region', `${region}, ${district}`);
+            formData.append('promo', appliedPromo);
+            formData.append('check_photo', fileInput.files[0]);
+
+            try {
+                const res = await fetch('/api/order', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await res.json();
+                if(result.status === 'ok') {
+                    alert("✅ Buyurtmangiz muvaffaqiyatli qabul qilindi! BTS pochtasi orqali yetkazib beriladi.");
+                    tg.close();
+                } else {
+                    alert("Xatolik yuz berdi. Qaytadan urinib ko'ring.");
+                    btn.innerText = "Buyurtma berish";
+                    btn.disabled = false;
+                }
+            } catch(e) {
+                alert("Tarmoqda xatolik!");
+                btn.innerText = "Buyurtma berish";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
